@@ -1,5 +1,5 @@
 {
-	"databaseName": "blogdb302",
+	"databaseName": "<your database name here>",
 	"s3-data-bucket": "lf-automation-cdl-s3databucket-1vw931yotpsgd",
 	"s3-data-folder": "data/employees",
 	"s3-data-file": "employees.csv",
