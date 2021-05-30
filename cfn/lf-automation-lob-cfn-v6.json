@@ -1,0 +1,123 @@
+{
+   "AWSTemplateFormatVersion":"2010-09-09",
+   "Transform":"AWS::Serverless-2016-10-31",
+   "Description":"Automate Lake Formation permissions setup in multiple accounts",
+   "Parameters" : {
+      "CDLAccountIDParameter" : {
+        "Type" : "String",
+        "Description" : "Enter Account ID for CDL account in the form of 123456789012",
+        "Default" : "123456789012"
+      }
+   },
+   "Resources":{
+     "LOBLambdaExecutionRole":{
+        "Type":"AWS::IAM::Role",
+        "Properties":{
+           "RoleName" : "lob-lambda-execution-role",
+           "AssumeRolePolicyDocument":
+           {
+             "Version": "2012-10-17",
+             "Statement": [
+               {
+                 "Effect": "Allow",
+                 "Principal": {
+                   "AWS":
+                     {
+                     "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "CDLAccountIDParameter"},":role/CDLgrantLOBPermissionsLambdaExecutionRole"]]
+                     },
+                   "Service": "lambda.amazonaws.com"
+                 },
+                 "Action": "sts:AssumeRole"
+               }
+             ]
+           },
+           "ManagedPolicyArns": [
+                   "arn:aws:iam::aws:policy/AWSResourceAccessManagerResourceShareParticipantAccess",
+                   "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                   "arn:aws:iam::aws:policy/AWSLakeFormationDataAdmin"
+                   ]
+        }
+     },
+     "makeLambdaRoleDLAdmin":{
+       "Type" : "AWS::LakeFormation::DataLakeSettings",
+       "Properties" : {
+           "Admins" : [
+             {
+               "DataLakePrincipalIdentifier" : {
+                  "Fn::GetAtt":[
+                     "LOBLambdaExecutionRole",
+                     "Arn"
+                  ]
+               }
+             }
+           ]
+         }
+     },
+      "grantLOBPermissionsLogGroup":{
+         "Type":"AWS::Logs::LogGroup",
+         "Properties":{
+            "LogGroupName":{
+               "Fn::Sub":"/aws/lambda/${grantLOBPermissionsLambda}"
+            }
+         }
+      },
+      "grantLOBPermissionsLambda":{
+         "Type":"AWS::Serverless::Function",
+         "Properties":{
+            "FunctionName": "grant_lob_permissions",
+            "Handler":"grant_lob_permissions.lambda_handler",
+            "Runtime":"python3.8",
+            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/grant_lob_permissions.py.zip",
+            "Description":"To setup permissions on each LOB as passed on to it from the event",
+            "Timeout":90,
+            "Role":{
+               "Fn::GetAtt":[
+                  "LOBLambdaExecutionRole",
+                  "Arn"
+               ]
+            }
+         }
+      },
+      "invokeLambdaFunctionPolicy":{
+         "Type":"AWS::IAM::ManagedPolicy",
+         "Properties":{
+            "ManagedPolicyName" : "invoke-lambda-functions-policy",
+            "Description":"Give permissions to invoke other lambda functions",
+            "Roles":[
+                {
+                    "Ref":"LOBLambdaExecutionRole"
+                }
+              ],
+            "PolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                   "Effect": "Allow",
+                   "Action": [
+                     "lambda:InvokeFunction",
+                     "lambda:InvokeAsync"
+                   ],
+                   "Resource": {
+                     "Fn::GetAtt": ["grantLOBPermissionsLambda","Arn"]
+                   }
+                  },
+                  {
+                     "Effect":"Allow",
+                     "Action":[
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                     ],
+                     "Resource":{
+                       "Fn::Sub":"arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${grantLOBPermissionsLogGroup}:*"
+                     }
+                  }
+               ]
+            }
+         }
+      }
+   },
+
+   "Outputs":{
+
+   }
+}

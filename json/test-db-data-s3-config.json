@@ -1,0 +1,9 @@
+{
+	"databaseName": "blogdb302",
+	"s3-data-bucket": "lf-automation-cdl-s3databucket-1vw931yotpsgd",
+	"s3-data-folder": "data/employees",
+	"s3-data-file": "employees.csv",
+	"s3-symlink-bucket": "lf-automation-cdl-s3symlinkbucket-1bf55spwhk595",
+	"s3-symlink-folder": "symlink",
+	"s3-symlink-file": "symlink.txt"
+}

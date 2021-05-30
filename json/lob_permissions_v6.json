@@ -1,0 +1,14 @@
+{
+	"databaseName": "blogdb302",
+	"typeOfChange": "CreateDatabase",
+	"cdl_permissions": ["SELECT", "ALTER", "DROP"],
+	"cdl_grantable_permissions": ["SELECT", "ALTER", "DROP"],
+	"roles": [{
+		"arn": "arn:aws:iam::249155814829:role/lob-lambda-execution-role",
+		"AccountName": "<An optional name for your Line of Business Account. This is just a comment>",
+		"lob_region": "us-east-1",
+		"lob_athena_user": "athena_user1",
+		"lob_db_permissions": ["DESCRIBE", "DROP"],
+		"lob_alltables_permissions": ["SELECT"]
+	}]
+}

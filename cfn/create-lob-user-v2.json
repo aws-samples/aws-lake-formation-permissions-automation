@@ -1,0 +1,71 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Parameters" : {
+		"LOBAthenaUserName": {
+      "Default": "lob-athena-user",
+      "AllowedPattern": "[a-zA-Z0-9-_]+",
+      "ConstraintDescription": "Must contain only alphanumeric characters dash(-) or underscore(_). Must have length 1-16",
+      "Description": "LOB Athena user name.",
+      "MaxLength": "16",
+      "MinLength": "1",
+      "Type": "String"
+   },
+		"LOBAthenaUserPassword" : {
+      "ConstraintDescription": "Please enter a password compliant with your company policy",
+      "NoEcho": "true",
+      "Type": "String"
+   	}
+	},
+	"Resources": {
+		"LOBGroup": {
+			"Type": "AWS::IAM::Group",
+			"Properties": {
+        "GroupName": "hr-group",
+				"ManagedPolicyArns": [
+					"arn:aws:iam::aws:policy/AmazonS3FullAccess",
+					"arn:aws:iam::aws:policy/AmazonAthenaFullAccess"
+				]
+			}
+		},
+		"LOBuser": {
+			"Type": "AWS::IAM::User",
+			"Properties": {
+				"Groups": [{
+					"Ref": "LOBGroup"
+				}],
+				"LoginProfile": {
+					"Password": {
+						"Ref": "LOBAthenaUserPassword"
+					},
+					"PasswordResetRequired": false
+				},
+				"UserName": {
+					"Ref": "LOBAthenaUserName"
+				}
+			}
+		},
+		"AthenaQueryResultsBucket" : {
+			 "Type" : "AWS::S3::Bucket"
+		}
+	},
+	"Outputs": {
+		"LOBGroupName": {
+			"Description": "LOB Group Name",
+			"Value": {
+				"Ref": "LOBGroup"
+			}
+		},
+		"LOBUserName": {
+			"Description": "LOB User Name: If you are testing symlink tables, make sure this user is created prior to creating symlink data bucket (i.e. prior to running the CDL Cloudformation stack). This user's ARN is included as the Principal in the Symlink bucket policy. If you have to create this user AFTER creating the CDL Cloudformation stack, make sure you update the symlink bucket policy with this user's ARN as the Principal.",
+			"Value": {
+				"Ref": "LOBuser"
+			}
+		},
+		"LOBAthenaQueryResultsBucket": {
+			"Description": "LOB Athena Query Results Bucket: Set this bucket to save your Athena query results when you log on to Athena for the first time as lob-athena-user.",
+			"Value": {
+				"Ref": "AthenaQueryResultsBucket"
+			}
+		}
+	}
+}

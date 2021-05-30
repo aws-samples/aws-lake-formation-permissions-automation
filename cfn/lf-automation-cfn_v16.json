@@ -1,0 +1,470 @@
+{
+   "AWSTemplateFormatVersion":"2010-09-09",
+   "Transform":"AWS::Serverless-2016-10-31",
+   "Description":"Automate Lake Formation permissions setup in multiple accounts",
+   "Parameters" : {
+      "LOBAthenaUserName": {
+        "Default": "lob-athena-user",
+        "Type" : "String",
+        "Description" : "Same user name that was used when running the Cloudformation stack for creating the LOB Athena user"
+      },
+      "LOBAccountIDsParameter1" : {
+        "Type" : "String",
+        "Description" : "Enter Account ID for lob account in the form of 123456789012",
+        "Default" : "123456789012"
+      },
+      "LOBAccountIDsParameter2" : {
+        "Type" : "String",
+        "Description" : "Enter Account ID for lob account in the form of 123456789012"
+      },
+      "LOBAccountIDsParameter3" : {
+        "Type" : "String",
+        "Description" : "Enter Account ID for lob account in the form of 123456789012"
+      },
+      "LOBAccountIDsParameter4" : {
+        "Type" : "String",
+        "Description" : "Enter Account ID for lob account in the form of 123456789012"
+      }
+    },
+   "Conditions": {
+     "LOBAccountIDsParameter1_Exists": {"Fn::Not": [{"Fn::Equals": ["", {"Ref": "LOBAccountIDsParameter1"}]}]},
+     "LOBAccountIDsParameter2_Exists": {"Fn::Not": [{"Fn::Equals": ["", {"Ref": "LOBAccountIDsParameter2"}]}]},
+     "LOBAccountIDsParameter3_Exists": {"Fn::Not": [{"Fn::Equals": ["", {"Ref": "LOBAccountIDsParameter3"}]}]},
+     "LOBAccountIDsParameter4_Exists": {"Fn::Not": [{"Fn::Equals": ["", {"Ref": "LOBAccountIDsParameter4"}]}]}
+   },
+   "Resources":{
+     "S3DataBucket" : {
+        "Type" : "AWS::S3::Bucket"
+     },
+     "S3SymlinkBucket" : {
+        "Type" : "AWS::S3::Bucket"
+     },
+     "registerS3DataBucketToLF":{
+        "Type" : "AWS::LakeFormation::Resource",
+        "Properties" : {
+            "ResourceArn" : {
+                "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "S3DataBucket"}]]
+            },
+            "UseServiceLinkedRole" : "True"
+          }
+     },
+     "S3SymlinkBucketPolicy": {
+        "Type" : "AWS::S3::BucketPolicy",
+        "Properties" : {
+            "Bucket" : {"Ref": "S3SymlinkBucket"},
+            "PolicyDocument" : {
+                "Version": "2012-10-17",
+                "Id": "symlinkPolicy",
+                "Statement": [
+                    {
+                        "Sid": "allowLOBAthenaUsers",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": [
+                              {"Fn::If": ["LOBAccountIDsParameter1_Exists",
+                                    {
+                                    "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter1"},":user/", {"Ref":"LOBAthenaUserName"}]]
+                                    },
+                                  {"Ref": "AWS::NoValue"}
+                                ]
+                              },
+                              {"Fn::If": ["LOBAccountIDsParameter2_Exists",
+                                    {
+                                    "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter2"},":user/", {"Ref":"LOBAthenaUserName"}]]
+                                    },
+                                  {"Ref": "AWS::NoValue"}
+                                ]
+                              },
+                              {"Fn::If": ["LOBAccountIDsParameter3_Exists",
+                                    {
+                                    "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter3"},":user/", {"Ref":"LOBAthenaUserName"}]]
+                                    },
+                                  {"Ref": "AWS::NoValue"}
+                                ]
+                              },
+                              {"Fn::If": ["LOBAccountIDsParameter4_Exists",
+                                    {
+                                    "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter4"},":user/", {"Ref":"LOBAthenaUserName"}]]
+                                    },
+                                  {"Ref": "AWS::NoValue"}
+                                ]
+                              }
+                            ]
+                        },
+                        "Action":  [
+                            "s3:ListBucket",
+                            "s3:GetObject",
+                            "s3:GetObjectVersion"
+                        ],
+                        "Resource": [
+                          {
+                              "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "S3SymlinkBucket"}]]
+                          },
+                          {
+                              "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "S3SymlinkBucket"},"/data/employees/employees.csv"]]
+                          },
+                          {
+                              "Fn::Join": ["", ["arn:aws:s3:::",{"Ref": "S3SymlinkBucket"},"/symlink/symlink.txt"]]
+                          }
+                        ]
+                    }
+                ]
+            }
+        }
+     },
+      "makeLambdaRoleDLAdmin":{
+        "Type" : "AWS::LakeFormation::DataLakeSettings",
+        "Properties" : {
+            "Admins" : [
+              {
+                "DataLakePrincipalIdentifier" : {
+                   "Fn::GetAtt":[
+                      "CDLgrantOrgPermissionsLambdaExecutionRole",
+                      "Arn"
+                   ]
+                }
+              },
+              {
+                "DataLakePrincipalIdentifier" : {
+                   "Fn::GetAtt":[
+                      "createTestDBLambdaExecutionRole",
+                      "Arn"
+                   ]
+                }
+              }
+            ]
+          }
+      },
+      "grantPermissionsLambdaExecutionRole":{
+         "Type":"AWS::IAM::Role",
+         "Properties":{
+            "RoleName" : "grantPermissionsLambdaExecutionRole",
+            "AssumeRolePolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Sid":"allowlambdatoassumerole",
+                     "Effect":"Allow",
+                     "Principal":{
+                        "Service":"lambda.amazonaws.com"
+                     },
+                     "Action":"sts:AssumeRole"
+                  }
+               ]
+            }
+         }
+      },
+      "grantPermissionsLogGroup":{
+         "Type":"AWS::Logs::LogGroup",
+         "Properties":{
+            "LogGroupName":{
+               "Fn::Sub":"/aws/lambda/${grantPermissionsLambda}"
+            }
+         }
+      },
+      "grantPermissionsLambda":{
+         "Type":"AWS::Serverless::Function",
+         "Properties":{
+            "FunctionName": "grant_permissions",
+            "Handler":"grant_permissions.lambda_handler",
+            "Runtime":"python3.8",
+            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/grant_permissions.py.zip",
+            "Description":"Main entry point function that invokes other CDL and lob role assumer functions",
+            "Timeout":90,
+            "Role":{
+               "Fn::GetAtt":[
+                  "grantPermissionsLambdaExecutionRole",
+                  "Arn"
+               ]
+            }
+         }
+      },
+      "CDLgrantOrgPermissionsLambdaExecutionRole":{
+         "Type":"AWS::IAM::Role",
+         "Properties":{
+            "RoleName" : "CDLgrantOrgPermissionsLambdaExecutionRole",
+            "AssumeRolePolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Sid":"",
+                     "Effect":"Allow",
+                     "Principal":{
+                        "Service":"lambda.amazonaws.com"
+                     },
+                     "Action":"sts:AssumeRole"
+                  }
+               ]
+            },
+            "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AWSLakeFormationDataAdmin",
+                    "arn:aws:iam::aws:policy/AWSLakeFormationCrossAccountManager",
+                    "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess"
+                    ]
+         }
+      },
+      "CDLgrantOrgPermissionsLogGroup":{
+         "Type":"AWS::Logs::LogGroup",
+         "Properties":{
+            "LogGroupName":{
+               "Fn::Sub":"/aws/lambda/${CDLgrantOrgPermissionsLambda}"
+            }
+         }
+      },
+      "CDLgrantOrgPermissionsLambda":{
+         "Type":"AWS::Serverless::Function",
+         "Properties":{
+           "FunctionName": "cdl_grant_org_permissions",
+            "Handler":"cdl_grant_org_permissions.lambda_handler",
+            "Runtime":"python3.8",
+            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/cdl_grant_org_permissions.py.zip",
+            "Description":"Lambda function in CDL account that grants DB permissions to the organization",
+            "Timeout":90,
+            "Role":{
+               "Fn::GetAtt":[
+                  "CDLgrantOrgPermissionsLambdaExecutionRole",
+                  "Arn"
+               ]
+            }
+         }
+      },
+      "createTestDBLambdaExecutionRole":{
+         "Type":"AWS::IAM::Role",
+         "Properties":{
+            "RoleName" : "createTestDBLambdaExecutionRole",
+            "AssumeRolePolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Sid":"",
+                     "Effect":"Allow",
+                     "Principal":{
+                        "Service":"lambda.amazonaws.com"
+                     },
+                     "Action":"sts:AssumeRole"
+                  }
+               ]
+            },
+            "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AWSLakeFormationDataAdmin",
+                    "arn:aws:iam::aws:policy/AWSLakeFormationCrossAccountManager",
+                    "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess",
+                    "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+                    ]
+         }
+      },
+      "createTestDBLogGroup":{
+         "Type":"AWS::Logs::LogGroup",
+         "Properties":{
+            "LogGroupName":{
+               "Fn::Sub":"/aws/lambda/${createTestDBLambda}"
+            }
+         }
+      },
+      "createTestDBLambda":{
+         "Type":"AWS::Serverless::Function",
+         "Properties":{
+           "FunctionName": "create_test_db",
+            "Handler":"create_test_db.lambda_handler",
+            "Runtime":"python3.8",
+            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/create_test_db.py.zip",
+            "Description":"Lambda function in CDL account to creates Glue database and tables for testing",
+            "Timeout":90,
+            "Role":{
+               "Fn::GetAtt":[
+                  "createTestDBLambdaExecutionRole",
+                  "Arn"
+               ]
+            }
+         }
+      },
+      "CDLgrantLOBPermissionsLambdaExecutionRole":{
+         "Type":"AWS::IAM::Role",
+         "Properties":{
+            "RoleName" : "CDLgrantLOBPermissionsLambdaExecutionRole",
+            "AssumeRolePolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Sid":"",
+                     "Effect":"Allow",
+                     "Principal":{
+                        "Service":"lambda.amazonaws.com"
+                     },
+                     "Action":"sts:AssumeRole"
+                  }
+               ]
+            }
+         }
+      },
+      "CDLgrantLOBPermissionsLogGroup":{
+         "Type":"AWS::Logs::LogGroup",
+         "Properties":{
+            "LogGroupName":{
+               "Fn::Sub":"/aws/lambda/${CDLgrantLOBPermissionsLambda}"
+            }
+         }
+      },
+      "CDLgrantLOBPermissionsLambda":{
+         "Type":"AWS::Serverless::Function",
+         "Properties":{
+           "FunctionName": "cdl_grant_lob_permissions",
+            "Handler":"cdl_grant_lob_permissions.lambda_handler",
+            "Runtime":"python3.8",
+            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/cdl_grant_lob_permissions.py.zip",
+            "Description":"Lambda function to assume an LOB role provided in its event and invoke a lambda function on that LOB",
+            "Timeout":90,
+            "Role":{
+               "Fn::GetAtt":[
+                  "CDLgrantLOBPermissionsLambdaExecutionRole",
+                  "Arn"
+               ]
+            }
+         }
+      },
+      "assumeCrossAccountRolesPolicy":{
+         "Type":"AWS::IAM::ManagedPolicy",
+         "Properties":{
+            "ManagedPolicyName" : "assume-crossaccount-roles-policy",
+            "Description":"Give permissions to assume LOB account roles in order to execute Lambda functions on those accounts",
+            "Roles":[
+                  "Ref":"CDLgrantLOBPermissionsLambdaExecutionRole"
+            ],
+            "PolicyDocument":{
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Resource": [
+                          {"Fn::If": ["LOBAccountIDsParameter1_Exists",
+                                {
+                                "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter1"},":role/lob-lambda-execution-role"]]
+                                },
+                              {"Ref": "AWS::NoValue"}
+                            ]
+                          },
+                          {"Fn::If": ["LOBAccountIDsParameter2_Exists",
+                                {
+                                "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter2"},":role/lob-lambda-execution-role"]]
+                                },
+                              {"Ref": "AWS::NoValue"}
+                            ]
+                          },
+                          {"Fn::If": ["LOBAccountIDsParameter3_Exists",
+                                {
+                                "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter3"},":role/lob-lambda-execution-role"]]
+                                },
+                              {"Ref": "AWS::NoValue"}
+                            ]
+                          },
+                          {"Fn::If": ["LOBAccountIDsParameter4_Exists",
+                                {
+                                "Fn::Join": ["", ["arn:aws:iam::",{"Ref": "LOBAccountIDsParameter4"},":role/lob-lambda-execution-role"]]
+                                },
+                              {"Ref": "AWS::NoValue"}
+                            ]
+                          }
+                        ]
+                    }
+                ]
+            }
+         }
+      },
+      "invokeLambdaFunctionsPolicy":{
+         "Type":"AWS::IAM::ManagedPolicy",
+         "Properties":{
+            "ManagedPolicyName" : "invoke-lambda-functions-policy",
+            "Description":"Give permissions to invoke other lambda functions",
+            "Roles":[
+                  "Ref":"grantPermissionsLambdaExecutionRole",
+                  "Ref":"CDLgrantOrgPermissionsLambdaExecutionRole",
+                  "Ref":"CDLgrantLOBPermissionsLambdaExecutionRole",
+                  "Ref":"createTestDBLambdaExecutionRole"
+            ],
+            "PolicyDocument":{
+               "Version":"2012-10-17",
+               "Statement":[
+                  {
+                     "Effect": "Allow",
+                     "Action": [
+                       "lambda:InvokeFunction",
+                       "lambda:InvokeAsync"
+                     ],
+                     "Resource": [
+                          "Fn::GetAtt": ["grantPermissionsLambda","Arn"],
+                          "Fn::GetAtt": ["CDLgrantOrgPermissionsLambda","Arn"],
+                          "Fn::GetAtt": ["CDLgrantLOBPermissionsLambda","Arn"],
+                          "Fn::GetAtt": ["createTestDBLambda","Arn"]
+                     ]
+                  },
+                  {
+                     "Effect":"Allow",
+                     "Action":[
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                     ],
+                     "Resource":[
+                          "Fn::Sub":"arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${grantPermissionsLogGroup}:*",
+                          "Fn::Sub":"arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CDLgrantOrgPermissionsLogGroup}:*",
+                          "Fn::Sub":"arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CDLgrantLOBPermissionsLogGroup}:*",
+                          "Fn::Sub":"arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${createTestDBLogGroup}:*"
+                     ]
+                  }
+               ]
+            }
+         }
+      }
+   },
+
+   "Outputs":{
+     "CDLgrantLOBPermissionsLambdaExecutionRoleARN": {
+          "Description": "ARN for CDLgrantLOBPermissionsLambdaExecutionRole: This ARN is used as one of the Principals in the LOB role(lob-lambda-exection-role)'s trust relationship. It is recommended that you run the LOB stack AFTER creating this role so that the correct role gets used in the LOB role's trust policy. If for some reason you happen to create this stack AFTER creating the LOB stack, you need to update the LOB role's trust policy and replace the Principal with this ARN prior to testing. ",
+          "Value": {"Fn::GetAtt" : ["CDLgrantLOBPermissionsLambdaExecutionRole", "Arn"] }
+     },
+     "YourS3DataBucketName": {
+          "Description": "S3DataBucket",
+          "Value": {"Ref": "S3DataBucket"}
+     },
+     "YourS3SymlinkBucketName": {
+          "Description": "S3SymlinkBucket: The default bucket policy for this bucket uses lob_athena_user as the Principal. If you happen to create a LOB user that needs to access this bucket, please make sure you add that user as a Principal to the bucket policy of this bucket. For example, if you happen to run the create-lob-user stack AFTER running this stack, make sure you update the default Principal with the ARN of the lob_athena_user created, prior to testing using this symlink bucket.",
+          "Value": {"Ref": "S3SymlinkBucket"}
+     },
+     "JSONForTestingCreateDB": {
+          "Description": "Step 1: Use this JSON template to build your JSON input to create your Glue Catalog database and tables ",
+          "Value": { "Fn::Sub":
+            '{
+              "databaseName": "<Your DB Name here>",
+              "s3-data-bucket": "${S3DataBucket}",
+              "s3-data-folder": "data/employees",
+              "s3-data-file": "employees.csv",
+              "s3-symlink-bucket": "${S3SymlinkBucket}",
+              "s3-symlink-folder": "symlink",
+              "s3-symlink-file": "symlink.txt"
+              }'
+          }
+     },
+     "JSONForTestingGrantPermissions": {
+          "Description": "Step 2: Use this JSON template to build your JSON input to grant permissions your Glue Catalog database and tables ",
+          "Value": { "Fn::Sub":
+            '{
+              "databaseName": "<Your DB Name here>",
+              "typeOfChange": "CreateDatabase",
+              "cdl_permissions": ["SELECT","ALTER","DROP"],
+              "cdl_grantable_permissions": ["SELECT","ALTER","DROP"],
+              "roles": [
+                {
+                  "arn": "arn:aws:iam::${LOBAccountIDsParameter1}:role/lob-lambda-execution-role",
+                  "AccountName": "<An optional name for your Line of Business Account. This is just a comment>",
+                  "lob_region": "${AWS::Region}",
+                  "lob_athena_user": "${LOBAthenaUserName}",
+                  "lob_db_permissions": ["DESCRIBE","DROP"],
+                  "lob_alltables_permissions": ["SELECT"]
+                }
+              ]
+            }'
+          }
+     }
+   }
+}
