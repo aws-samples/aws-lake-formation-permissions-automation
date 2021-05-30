@@ -20,12 +20,14 @@ Now that all resources have been deployed in the accounts, you can now start tes
 4. From the Outputs section of lf-automation-cdl stack copy the “JSONForTestingCreateDB” value to create a JSON file called test-db-data-s3-config.json, edit the file to change the name of your database, and invoke the [create_test_db](lambda/create_test_db.py) Lambda function. This will create a test database and table in the Glue Data Catalog.
 Here is an example CLI:
 ```
-aws lambda invoke --function-name create_test_db --payload "file://test-db-data-s3-config.json" --cli-binary-format raw-in-base64-out out.txt
+aws lambda invoke --function-name create_test_db --payload "file://test-db-data-s3-config.json"
+--cli-binary-format raw-in-base64-out out.txt
 ```
 5. From the Outputs section of lf-automation-cdl stack copy the “JSONForTestingGrantPermissions” value to create a JSON file called lob_permissions.json, edit the file to change the name of your database, and invoke the [grant_permissions](lambda/grant_permissions.py) Lambda function. This will grant permissions to the roles as declared in the JSON file. You can edit the file to add or modify permissions to the roles. You can also add additional roles in the file with appropriate permissions as needed.
 Here is an example CLI:
 ```
-aws lambda invoke --function-name grant_permissions --payload "file://lob_permissions.json" --cli-binary-format raw-in-base64-out out.txt
+aws lambda invoke --function-name grant_permissions --payload "file://lob_permissions.json"
+--cli-binary-format raw-in-base64-out out.txt
 ```
 
 ## Security
