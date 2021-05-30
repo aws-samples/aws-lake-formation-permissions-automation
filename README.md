@@ -11,10 +11,10 @@ You can use this sample to:
 
 ## Deployment steps
 Create AWS Cloudformation stacks in the following order:
-1. In each of your Line-Of-Business (LOB) accounts, deploy [cfn/create-lob-user-v2.json](cfn/create-lob-user-v2.json) to provision a test Amazon Athena user
-2. In your central data lake account(CDL), deploy [cfn/lf-automation-cfn_v16.json](cfn/lf-automation-cfn_v16.json) to provision AWS Lambda functions and AWS Identity and Access Manager (IAM) roles to grant permissions to the database and table in your data catalog
+1. In each of your Line-Of-Business (LOB) accounts, deploy [cfn/create-lob-user.json](cfn/create-lob-user.json) to provision a test Amazon Athena user
+2. In your central data lake account(CDL), deploy [cfn/lf-automation-cfn.json](cfn/lf-automation-cfn.json) to provision AWS Lambda functions and AWS Identity and Access Manager (IAM) roles to grant permissions to the database and table in your data catalog
   This is the stack in which you will provide the account numbers of each of your LOB accounts. Note that this Cloudformation template only accepts a maximum of 4 account IDs as parameters. If you want to grant access to more LOB accounts, you can modify the template to add more accounts. Cloudformation uses these parameters to give the Lambda functions cross account permission to invoke Lambda functions in each of the LOB accounts.
-3. In each of your LOB accounts, deploy [cfn/lf-automation-lob-cfn-v6.json](cfn/lf-automation-lob-cfn-v6.json) to provision Lambda function to grant permissions within each account to the Amazon Athena user created in the first step.
+3. In each of your LOB accounts, deploy [cfn/lf-automation-lob-cfn.json](cfn/lf-automation-lob-cfn.json) to provision Lambda function to grant permissions within each account to the Amazon Athena user created in the first step.
   This is the stack in which you will provide the account number of your central data lake as a parameter. Cloudformation uses this parameter to create trust policies in the LOB accounts to trust the CDL account to invoke LOB accounts Lambda function.
 Now that all resources have been deployed in the accounts, you can now start testing by invoking the Lambda functions
 4. From the Outputs section of lf-automation-cdl stack copy the “JSONForTestingCreateDB” value to create a JSON file called test-db-data-s3-config.json, edit the file to change the name of your database, and invoke the [create_test_db](lambda/create_test_db.py) Lambda function. This will create a test database and table in the Glue Data Catalog.
