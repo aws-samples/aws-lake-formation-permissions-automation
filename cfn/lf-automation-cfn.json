@@ -168,7 +168,7 @@
             "FunctionName": "grant_permissions",
             "Handler":"grant_permissions.lambda_handler",
             "Runtime":"python3.8",
-            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/grant_permissions.py.zip",
+            "CodeUri":"s3://aws-bigdata-blog/artifacts/lakeformation-permissions-automation/lambda-code/grant_permissions.py.zip",
             "Description":"Main entry point function that invokes other CDL and lob role assumer functions",
             "Timeout":90,
             "Role":{
@@ -217,7 +217,7 @@
            "FunctionName": "cdl_grant_org_permissions",
             "Handler":"cdl_grant_org_permissions.lambda_handler",
             "Runtime":"python3.8",
-            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/cdl_grant_org_permissions.py.zip",
+            "CodeUri":"s3://aws-bigdata-blog/artifacts/lakeformation-permissions-automation/lambda-code/cdl_grant_org_permissions.py.zip",
             "Description":"Lambda function in CDL account that grants DB permissions to the organization",
             "Timeout":90,
             "Role":{
@@ -267,7 +267,7 @@
            "FunctionName": "create_test_db",
             "Handler":"create_test_db.lambda_handler",
             "Runtime":"python3.8",
-            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/create_test_db.py.zip",
+            "CodeUri":"s3://aws-bigdata-blog/artifacts/lakeformation-permissions-automation/lambda-code/create_test_db.py.zip",
             "Description":"Lambda function in CDL account to creates Glue database and tables for testing",
             "Timeout":90,
             "Role":{
@@ -311,7 +311,7 @@
            "FunctionName": "cdl_grant_lob_permissions",
             "Handler":"cdl_grant_lob_permissions.lambda_handler",
             "Runtime":"python3.8",
-            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/cdl_grant_lob_permissions.py.zip",
+            "CodeUri":"s3://aws-bigdata-blog/artifacts/lakeformation-permissions-automation/lambda-code/cdl_grant_lob_permissions.py.zip",
             "Description":"Lambda function to assume an LOB role provided in its event and invoke a lambda function on that LOB",
             "Timeout":90,
             "Role":{

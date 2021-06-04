@@ -67,7 +67,7 @@
             "FunctionName": "grant_lob_permissions",
             "Handler":"grant_lob_permissions.lambda_handler",
             "Runtime":"python3.8",
-            "CodeUri":"s3://lf-automation-blog/artifacts/lf-automation-lambda-code/grant_lob_permissions.py.zip",
+            "CodeUri":"s3://aws-bigdata-blog/artifacts/lakeformation-permissions-automation/lambda-code/grant_lob_permissions.py.zip",
             "Description":"To setup permissions on each LOB as passed on to it from the event",
             "Timeout":90,
             "Role":{
